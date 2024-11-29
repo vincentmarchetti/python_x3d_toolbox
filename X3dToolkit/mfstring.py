@@ -1,5 +1,28 @@
 __all__ = ['encode','decode']
 
+# MIT License
+# 
+# Copyright (c) 2024 Vincent Marchetti
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
 import logging
 logger = logging.getLogger("MFStringEscaping")
 logger.addHandler( logging.NullHandler() )
@@ -10,8 +33,6 @@ Python (targeting 3.7) implementation of the rules for
 encoding X3D MFString values into a single unicode string.
 The intent is that this single unicode string is then further encoded
 into a string appropriate for storage in an XML attribute value.
-
-Also includes 
 """
 
 BACKSLASH=u"\u005C"   # unicode REVERSE_SOLIDUS, the \ character
@@ -21,9 +42,12 @@ SPACE=u" "
 from io import StringIO
 
 class SlashEncodingError(ValueError):
+    "Exception thrown when an a string cannot be decoded"
+    
     def __init__(self,xString, *tups, **keyw):
-        """
-        xString a unicode string that fails as argument to slash_decoding
+        """initialize SlashEncodingError
+                
+        xString: the unicode string that fails as argument to slash_decoding
         """
         Exception.__init__(self,xString, *tups, **keyw)
         
@@ -31,9 +55,11 @@ class SlashEncodingError(ValueError):
         return "invalid slash-encoded value: {%s}" % self.args[0]
         
 class ListEncodingError(ValueError):
+    "Exception thrown when an a string cannot be decoded as a list of strings"
     def __init__(self,xString, *tups, **keyw):
-        """
-        xString a unicode string that fails as argument to decoding
+        """initialize ListEncodingError
+        
+        xString : the unicode string that fails as argument to decoding
         """
         Exception.__init__(self,xString, *tups, **keyw)
         
@@ -42,9 +68,17 @@ class ListEncodingError(ValueError):
 
 
 def slash_encode(aString):
-    """
-    input arbitrary unicode string
-    return unicode string with \ --> \\ ; " --> \" replacements
+    """Applies escaping to backslash and quote character
+        
+    Applied to elements of an MFString collection to allow the complete
+    list to be encoded as a space delimited list of strings enclosed in unescaped quotes
+    
+    This method is exposed for the purpose of testing. It is applied to the
+    elements of an MFString as part of the encode function. Users of this module will
+    not have to call this function.
+    
+    aString : arbitrary unicode string
+    return :  unicode string with \ --> \\ ; " --> \" replacements
     """
     rv=StringIO()
     for c in aString:
@@ -55,10 +89,14 @@ def slash_encode(aString):
     
 
 def slash_decode( xString ):
-    """
-    xString : a unicode string that meets requirements of encoding,
-        namely QUOTE_MARK and BACKSLASH are always part of of
-        an escaped pair
+    """Reverses the slash_encoding
+    
+    This method is exposed for the purpose of testing. It is applied to the
+    elements of an MFString as part of the decode function. Users of this module will
+    not have to call this function.
+
+    xString : a unicode string that is the result of an application of the slash_encode algorithm
+        
     returns : The string that would be encoded to xString
     """
     rv=StringIO()
@@ -82,7 +120,14 @@ def slash_decode( xString ):
     
 
 def encode( aList):
-    """
+    """Encode a list of unicode strings to a single unicode string
+    
+    The return value of this function will be passed to the function that applies
+    the escaping and encoding required to render it as XML attribute value
+    as specified in the XML reference document 
+    https://www.w3.org/TR/2008/REC-xml-20081126
+    
+    
     input argument: a sequence of unicode strings
     returns: a unicode string
     """
@@ -91,11 +136,18 @@ def encode( aList):
     return SPACE.join(quoted_items)
 
     
-whitespace = u" \n\r\t"
+whitespace = u" \n\r\t" # space, newlines, carriage returns, tab
 def decode( mfstring_enc ):
-    """
-    input : a unicode string
-    output: Python list of unicode strings
+    """Decode unicode string into a list of unicode strings
+    
+    
+    This method is to be applied to the normalized attribute value, the
+    result of appluing the algorithm specified in the section 3.3.3 of the
+    XML reference document
+    https://www.w3.org/TR/2008/REC-xml-20081126/#AVNormalize
+    
+    mfstring_enc : A unicode string, the result of the application of the encode function
+    returns : Python list of unicode strings
     """
     retVal = []
     looking_for_delim = True
@@ -118,8 +170,6 @@ def decode( mfstring_enc ):
                     retVal.append(slash_decode(mfstring_enc[ix_start:ix]))
                     looking_for_delim = True
                 escaping = False
-            
-                    
     
     if not looking_for_delim:
         raise ListEncodingError( mfstring_enc )
