@@ -1,30 +1,11 @@
-__all__ = ['encode','decode']
+# SPDX-FileCopyrightText: 2024 Vincent Marchetti
+#
+# SPDX-License-Identifier: MIT
 
-# MIT License
-# 
-# Copyright (c) 2024 Vincent Marchetti
-# 
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-# 
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-# 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
+__all__ = ['encode', 'decode']
 
 import logging
-logger = logging.getLogger("MFStringEscaping")
+logger = logging.getLogger("x3d-toolbox.mfstring")
 logger.addHandler( logging.NullHandler() )
 logger.setLevel( logging.WARN )
 
@@ -38,11 +19,12 @@ into a string appropriate for storage in an XML attribute value.
 BACKSLASH=u"\u005C"   # unicode REVERSE_SOLIDUS, the \ character
 QUOTE_MARK= u"\u0022" # double quotes "
 SPACE=u" "
+ITEM_SEPARATORS = u", \n\r\t" # allowed without warning between list items
 
 from io import StringIO
 
 class SlashEncodingError(ValueError):
-    "Exception thrown when an a string cannot be decoded"
+    "Exception thrown when an a string cannot be slash-decoded"
     
     def __init__(self,xString, *tups, **keyw):
         """initialize SlashEncodingError
@@ -136,7 +118,7 @@ def encode( aList):
     return SPACE.join(quoted_items)
 
     
-whitespace = u" \n\r\t" # space, newlines, carriage returns, tab
+
 def decode( mfstring_enc ):
     """Decode unicode string into a list of unicode strings
     
@@ -149,6 +131,8 @@ def decode( mfstring_enc ):
     mfstring_enc : A unicode string, the result of the application of the encode function
     returns : Python list of unicode strings
     """
+    
+    
     retVal = []
     looking_for_delim = True
     escaping = False
@@ -159,7 +143,7 @@ def decode( mfstring_enc ):
                 looking_for_delim = False
                 escaping = False
                 ix_start=ix+1
-            elif c not in whitespace:
+            elif c not in ITEM_SEPARATORS:
                 logger.warning("unexpected character %r between MFString items" % c)
                 
         else:
