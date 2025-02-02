@@ -86,16 +86,40 @@ slash_escaping_test = [
     (u''                , u'')  # this is empty string --> empty string test    
 ]    
     
-
+class PartialDecodingTest(unittest.TestCase):
+    """
+    tests to develop a version of mfstring decoding that will
+    allow for partial return of an MFString value; if one (or more)
+    of the elements is invalid the others will still be returned
+    """
+    
+    def test10(self):
+        "partial return with warning message"
+        
+        encodedSFStrings = [
+            r'MFString in classic encoding.',
+            r'You should see single backslash: \\',
+            r'You should see double qoute: \"',
+            #r'This is invalid \blahblah',
+            #r'C:/Users/data/Temp/..\maya\projects\untitled-files\Default.tif'
+            ]
+        encoded_value=" ".join(
+            [ ('"%s"' % v) for v in encodedSFStrings ]
+        )
+        
+        value = mfstring.decode(encoded_value)
+        # should be one fewer value in the returned Python list
+        self.assertEqual(len(encodedSFStrings) , len(value))
     
 # loading up a suite of tests            
 suite = unittest.TestSuite()
 
-for pair in slash_escaping_test[0:]:
+for pair in slash_escaping_test[0:0]:
     suite.addTest( SlashEncodingTest(pair[0], pair[1]))
     suite.addTest( SlashDecodingTest(pair[0], pair[1]))
 
-suite.addTest( unittest.defaultTestLoader.loadTestsFromTestCase( ListTests )  )
+#suite.addTest( unittest.defaultTestLoader.loadTestsFromTestCase( ListTests )  )
+suite.addTest( unittest.defaultTestLoader.loadTestsFromTestCase( PartialDecodingTest ) ) 
   
    
 if __name__ == '__main__':
