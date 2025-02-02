@@ -10,6 +10,27 @@ logger.addHandler( logging.NullHandler() )
 logger.setLevel( logging.WARN )
 
 """
+The _ONLY_WARN_ON_ERRORS_ module level value will specify the behavior
+when function argument string values cannot be interpreted as validly encoded
+SFString or MFString values
+
+When _ONLY_WARN_ON_ERRORS_ is False, an invalid encoding will result in an Exception
+being raised.
+
+Client code can set _ONLY_WARN_ON_ERRORS_ to be true, in which case no exception will be 
+thrown, only a logging module WARN level message will be omitted. It is up to client
+code to decide on the disposition of that warning.
+
+Use case for this loosey-goosey behavior is for use in a tolerant X3D importer which
+would process MFString encodings with invalidly encoded SFString items without raising
+an Exception.
+
+The only goal of setting _ONLY_WARN_ON_ERRORS_ to false is to avoid throwing an exception,
+no intent is claimed provide a useful decoded value from the function
+"""
+_ONLY_WARN_ON_ERRORS_ = False
+
+"""
 Python (targeting 3.7) implementation of the rules for
 encoding X3D MFString values into a single unicode string.
 The intent is that this single unicode string is then further encoded
@@ -81,6 +102,7 @@ def slash_decode( xString ):
         
     returns : The string that would be encoded to xString
     """
+    logger.debug("slash_decode: %r" % (xString,))
     rv=StringIO()
     escaping = False
     for c in xString:
@@ -144,23 +166,26 @@ def decode( mfstring_enc ):
                 escaping = False
                 ix_start=ix+1
             elif c not in ITEM_SEPARATORS:
-                logger.warning("unexpected character %r between MFString items" % c)
-                
+                msg="unexpected character %r between MFString items" % c
+                if _ONLY_WARN_ON_ERRORS_:
+                    logger.warning( msg )
+                else:
+                    raise ListEncodingError( msg )
         else:
-            if c==BACKSLASH:
-                escaping = not escaping
-            elif c==QUOTE_MARK:
-                if not escaping:
+            if c==QUOTE_MARK and not escaping:
+                try:
                     retVal.append(slash_decode(mfstring_enc[ix_start:ix]))
-                    looking_for_delim = True
-                escaping = False
-    
+                except (SlashEncodingError,) as exc:
+                    if _ONLY_WARN_ON_ERRORS_:
+                        logger.warning( str(exc) )
+                    else:
+                        raise
+                looking_for_delim = True
+            escaping = (c == BACKSLASH) and not escaping
     if not looking_for_delim:
-        raise ListEncodingError( mfstring_enc )
+        msg = "encoded MFString not terminated by unescaped quote"
+        if _ONLY_WARN_ON_ERRORS_:
+            logger.warn( msg )
+        else:
+            raise ListEncodingError( msg )
     return retVal                        
-                    
-                    
-                    
-            
-    
-

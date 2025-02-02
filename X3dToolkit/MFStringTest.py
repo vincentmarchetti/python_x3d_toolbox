@@ -95,35 +95,46 @@ class PartialDecodingTest(unittest.TestCase):
     
     def test10(self):
         "partial return with warning message"
-        
-        encodedSFStrings = [
-            r'MFString in classic encoding.',
-            r'You should see single backslash: \\',
-            r'You should see double qoute: \"',
-            #r'This is invalid \blahblah',
-            #r'C:/Users/data/Temp/..\maya\projects\untitled-files\Default.tif'
-            ]
-        encoded_value=" ".join(
-            [ ('"%s"' % v) for v in encodedSFStrings ]
-        )
-        
-        value = mfstring.decode(encoded_value)
-        # should be one fewer value in the returned Python list
-        self.assertEqual(len(encodedSFStrings) , len(value))
+        import logging
+        mfstring._ONLY_WARN_ON_ERRORS_ = True
+        savedLevel = logging.getLogger("x3d-toolbox.mfstring").getEffectiveLevel()
+        logging.getLogger("x3d-toolbox.mfstring").setLevel(logging.ERROR)
+        try:
+            encodedSFStrings = [
+                r'MFString in classic encoding.',
+                r'You should see single backslash: \\',
+                r'You should see double qoute: \"',
+                r'This is invalid \blahblah',   # slash-invalid
+                r'C:/Users/data/Temp/..\maya\projects\untitled-files\Default.tif', # slash-invalid
+                r'A final valid value'
+                ]
+            encoded_value=" ".join(
+                [ ('"%s"' % v) for v in encodedSFStrings ]
+            )
+            invalid_item_count = 2
+            value = mfstring.decode(encoded_value)
+            # should be one fewer value in the returned Python list
+            self.assertEqual(len(encodedSFStrings)-invalid_item_count , len(value))
+        except:
+            raise
+        finally:
+            mfstring._ONLY_WARN_ON_ERRORS_ = False
+            logging.getLogger("x3d-toolbox.mfstring").setLevel(savedLevel)
     
 # loading up a suite of tests            
 suite = unittest.TestSuite()
 
-for pair in slash_escaping_test[0:0]:
+for pair in slash_escaping_test[0:]:
     suite.addTest( SlashEncodingTest(pair[0], pair[1]))
     suite.addTest( SlashDecodingTest(pair[0], pair[1]))
 
-#suite.addTest( unittest.defaultTestLoader.loadTestsFromTestCase( ListTests )  )
+suite.addTest( unittest.defaultTestLoader.loadTestsFromTestCase( ListTests )  )
 suite.addTest( unittest.defaultTestLoader.loadTestsFromTestCase( PartialDecodingTest ) ) 
   
    
 if __name__ == '__main__':
 
+    
     # Achieving the formatting I like
     class TextTestResult(unittest.TextTestResult):
         def getDescription(self, test):
